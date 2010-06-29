@@ -13,7 +13,7 @@
     (.setJvm "jsvc")
     (.clearArgs)
     (.setClassname "leiningen.daemon.daemonProxy"))
-  (doseq [option (mapcat mangle-option (:options daemon-map))]
+  (doseq [option (concat (mapcat mangle-option (:options daemon-map)) ["-Djava.awt.headless=true"])]
     (.. java (createJvmarg) (setValue option)))
   (doseq [arg (concat [(:ns daemon-map)] (:args daemon-map) cmdline-args)]
     (.. java (createArg) (setValue arg)))
