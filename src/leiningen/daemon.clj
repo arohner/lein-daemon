@@ -35,16 +35,31 @@
       "stop" stop-handler
       "check" check-handler})
 
+(defn print-usage []
+  (println "Usage:")
+  (println "lein daemon start/stop/check name-of-daemon"))
+
+(defn print-available-daemons [project]
+  (println (count (:daemon project)) "available daemon commands")
+     (doseq [daemon (keys (:daemon project))]
+       (println "   " daemon)))
+
 (defn daemon
   "starts a daemon process. daemonname is a key in the :daemon map in project.clj to run."
-  ([project cmd daemon & cmdline-args]
-     (let [handler (get handler-map cmd)]
-       (if handler
-         (eval-in-project project nil #(handler % (get-in project [:daemon daemon]) cmdline-args))
-         (println "Unrecognized command. Must be one of " (keys handler-map)))))
-  
+  ([project cmd daemon-str & cmdline-args]
+     (let [handler (get handler-map cmd)
+           daemon (get-in project [:daemon daemon-str])]
+       (cond
+        (and handler daemon) (let [rc (eval-in-project project nil #(handler % daemon cmdline-args))]
+                               (when-not (= 0 rc)
+                                 (println "FAIL. See the error log for more information")))
+        handler (do
+                  (println "Unrecognized daemon:" daemon-str)
+                  (print-available-daemons project))
+        daemon (println "Unrecognized command. Must be one of " (keys handler-map)))))
   ([project]
-     (println "daemon must be called with at least one argument, the name of a daemon in project.clj")
-     (println (count (:daemon project)) "available daemon commands")
-     (doseq [daemon (keys (:daemon project))]
-       (println "   " daemon))))
+     (print-usage)
+     (print-available-daemons project))
+  ([project _]
+     (print-usage)
+     (print-available-daemons project)))

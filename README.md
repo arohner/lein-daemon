@@ -47,3 +47,5 @@ Lein daemon will add -Djava.awt.headless=true to the list of java options.
 If the daemon process is started using sudo or the root user, the init function will be called while the process still holds root privileges. The process will drop to regular user privileges before calling the start function. **Do not spawn new threads during the init process, spawn them during the start function**.
 
 Use the :user option to specify which account to drop to.
+
+By default, jsvc will write the pid file to /var/run/jsvc.pid, which requires root access on most systems. Either start the daemon with sudo, or override the pidfile location to somewhere that doesn't require root access.
