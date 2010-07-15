@@ -11,7 +11,12 @@ The keys of the daemon map are the names of services that can be started at the 
 
 Install
 =======
-Because lein-daemon contains code that lein runs, and code that the started process runs, **you'll need to specify lein-daemon once in :dependencies, and again in :dev-dependencies **
+lein daemon depends on the Apache Commons Daemon library. 
+
+If you're using MacPorts, "sudo port install commons-daemon" 
+On Ubuntu, "sudo apt-get install jsvc" 
+
+Because lein-daemon contains code that lein runs, and code that the launched process runs, **you'll need to specify lein-daemon once in :dependencies, and again in :dev-dependencies **
 
 NS
 ==
