@@ -26,7 +26,7 @@ The Daemon interface is found at: http://commons.apache.org/daemon/apidocs/org/a
 
 Arguments
 =========
-:args is a list of arguments that will be passed to the init method. The arguments in the daemon map will be concatenated with the arguments on the command line.
+:args is a list of arguments that will be passed to the init method. Extra arguments on the command line will be appended to the end of args.
 
 Options
 =======
