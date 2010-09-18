@@ -1,6 +1,7 @@
 (ns leiningen.daemon.daemonProxy
   "The entry point for services"
   (:import org.apache.commons.daemon.Daemon)
+  (:refer-clojure :include [with-bindings])
   (:gen-class :name leiningen.daemon.daemonProxy
               :init ctor
               :state state
