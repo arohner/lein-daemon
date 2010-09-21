@@ -20,11 +20,10 @@
     (dosync
      (alter (.state this) assoc :proxy-ns ns)
      (alter (.state this) assoc :controller (.getController context)))
-    (println "proxy-ns = " (:proxy-ns @(.state this)))
     (if ns
       (if-let [init-fn (ns-resolve ns 'init)]
         (do
-          (println "found init-fn, calling with " args)
+          (println "lein-daemon: found init-fn, calling with " args)
           (clojure.main/with-bindings
             (apply init-fn args))))
       (.fail (.getController context (str "Clojure namespace " ns-sym " not found"))))))
@@ -34,18 +33,17 @@
         start-fn (ns-resolve (:proxy-ns state) 'start)]
     (if start-fn
       (do
-        (println "starting!")
+        (println "lein-daemon: starting!")
         (clojure.main/with-bindings
           (start-fn)))
-      (do
-        (.fail (:controller @state) (str "fn start not found in namespace " (:proxy-ns state)))))))
+      (.fail (:controller @state) (str "lein-daemon: error: start function not found in namespace " (:proxy-ns state))))))
 
 (defn -stop [this]
   (let [state @(.state this)
         stop-fn (ns-resolve (:proxy-ns state) 'stop)]
     (if stop-fn
       (do
-        (println "stopping!")
+        (println "lein-daemon: stopping!")
         (stop-fn))
       (println "stop function not found in ns " (:proxy-ns state) ", ignoring"))))
 
@@ -54,7 +52,7 @@
         destroy-fn (resolve (:proxy-ns state) 'destroy)]
     (if destroy-fn
       (do
-        (println "destroying!")
+        (println "lein-daemon: destroying!")
         (destroy-fn))
       (println "destroy function not found in ns " (:proxy-ns state) ", ignoring"))))
 
