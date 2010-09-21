@@ -11,17 +11,17 @@ The keys of the daemon map are the names of services that can be started at the 
 
 Install
 =======
-add lein-daemon to your leiningen project file:
+add lein-daemon to your leiningen project file, **both as a regular dependency, AND a dev-dependency**::
 
-    [lein-daemon "0.2.1"]
+    :dependencies [[lein-daemon "0.2.1"]]
+    :dev-dependencies [[lein-daemon "0.2.1]]
+
+Lein-daemon requires this because it contains code that lein runs, and code that the launched process runs. 
 
 lein daemon also depends on the Apache Commons Daemon library. 
 
 If you're using MacPorts, "sudo port install commons-daemon"
 On Ubuntu, "sudo apt-get install jsvc" 
-
-Because lein-daemon contains code that lein runs, and code that the launched process runs, **you'll need to specify lein-daemon once in :dependencies, and again in :dev-dependencies **
-
 
 NS
 ==
