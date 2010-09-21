@@ -22,7 +22,7 @@ NS
 ==
 jsvc requires the service to be started with a class that implements the Daemon interface. Pre-compiling classes is a pain, so lein-daemon takes a clojure namespace with functions that "implement" the daemon interface, i.e. clojure functions (init [& cmdline-args]), (start []), (stop []) (destroy []). The :ns key specifies a clojure namespace that will be require'd, containing the functions init, start, stop, destroy. All functions except start are optional. 
 
-The Daemon interface is found at: http://commons.apache.org/daemon/apidocs/org/apache/commons/daemon/Daemon.html
+[More information on the Daemon interface here](http://commons.apache.org/daemon/apidocs/org/apache/commons/daemon/Daemon.html)
 
 Arguments
 =========
@@ -30,7 +30,7 @@ Arguments
 
 Options
 =======
-:options is a map of options passed to jsvc. Keywords will be converted to the java argument format (:foo -> "-foo"). See the list at http://commons.apache.org/daemon/jsvc.html. For the options that don't take an argument, for example -nodetach, the value in the clojure map will be ignored. 
+:options is a map of options passed to jsvc. Keywords will be converted to the java argument format (:foo -> "-foo"). [See here for the list](http://commons.apache.org/daemon/jsvc.html). For the options that don't take an argument, for example -nodetach, the value in the clojure map will be ignored. 
 
 Lein's :jvm-opts and classpath (:source-path, :jar-dir, etc) specified in project.clj will also be passed to jsvc.
 
