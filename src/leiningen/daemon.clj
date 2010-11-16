@@ -1,5 +1,7 @@
 (ns leiningen.daemon
-  (:use [leiningen.compile :only [eval-in-project]]))
+  (:use [leiningen.compile :only [eval-in-project]]
+        [leiningen.classpath :only [make-path get-classpath]])
+  (:import (java.io File)))
 
 (def jsvc-singular-args #{:version :nodetach :debug :check :stop}) ;; jsvc command line args that don't take a parameter
 
@@ -13,6 +15,8 @@
     (.setJvm "jsvc")
     (.clearArgs)
     (.setClassname "leiningen.daemon.daemonProxy"))
+  (.setClasspath java
+                 (:classpath daemon-map))
   (doseq [option (concat (mapcat mangle-option (:options daemon-map)) ["-Djava.awt.headless=true"])]
     (.. java (createJvmarg) (setValue option)))
   (doseq [arg (concat [(:ns daemon-map)] (:args daemon-map) cmdline-args)]
@@ -62,9 +66,13 @@
   "starts a daemon process. daemonname is a key in the :daemon map in project.clj to run."
   ([project cmd daemon-str & cmdline-args]
      (let [handler (get handler-map cmd)
-           daemon (get-in project [:daemon daemon-str])]
+           daemon (get-in project [:daemon daemon-str])
+           classpath (apply make-path (concat (map #(str (:root project) File/separator %)
+                                                   (:extra-classpath daemon))
+                                              (get-classpath project)))
+           daemon-with-cp (assoc daemon :classpath classpath)]
        (cond
-        (and handler daemon) (run-daemon project handler daemon cmdline-args)
+        (and handler daemon) (run-daemon project handler daemon-with-cp cmdline-args)
         handler (daemon-not-found project daemon-str)
         daemon (unrecognized-command))))
   ([project]
