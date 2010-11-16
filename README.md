@@ -54,3 +54,7 @@ If the daemon process is started using sudo or the root user, the init function 
 Use the :user option to specify which account to drop to.
 
 By default, jsvc will write the pid file to /var/run/jsvc.pid, which requires root access on most systems. Either start the daemon with sudo, or override the pidfile location to somewhere that doesn't require root access.
+
+Tips & Tricks
+=============
+It's sometimes tricky to figure out what is going wrong when the service doesn't start properly. To debug, you can add the ":debug true" and ":nodetach true" to your daemon :options map. debug prints a lot of information on startup, and nodetach prevents the process from exiting, if it would normally exit because nothing is keeping the process alive.

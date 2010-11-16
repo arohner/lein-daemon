@@ -49,7 +49,7 @@
 
 (defn -destroy [this]
   (let [state @(.state this)
-        destroy-fn (resolve (:proxy-ns state) 'destroy)]
+        destroy-fn (ns-resolve (:proxy-ns state) 'destroy)]
     (if destroy-fn
       (do
         (println "lein-daemon: destroying!")
