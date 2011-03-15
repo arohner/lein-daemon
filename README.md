@@ -59,12 +59,11 @@ set_caps error
 ==============
 When starting up on linux, if you get an error message that looks like
 
-`
-set_caps: failed to set capabilities
-check that your kernel supports capabilities
-set_caps(CAPS) failed
-Service exit with a return value of 4
-`
+    set_caps: failed to set capabilities
+    check that your kernel supports capabilities
+    set_caps(CAPS) failed
+    Service exit with a return value of 4
+
 and you're running ubuntu, check the version of your jsvc package. The 1.0.2 version on all ubuntu versions before 11.04 won't work. You'll need a later version of the jsvc package. The [jsvc package in 11.04](http://packages.ubuntu.com/natty/jsvc) resolves this issue. I was able to install it on my 9.10 amd64 box with no issue. 
 
 Tips & Tricks
