@@ -1,4 +1,5 @@
-(defproject lein-daemon "0.2.1-SNAPSHOT"
-  :dependencies [[commons-daemon "1.0.1"]]
-  :dev-dependencies [[org.clojure/clojure "1.2.0"]]
-  :aot [leiningen.daemon.daemonProxy])
+(defproject lein-daemon "0.3"
+  :description "A lein plugin that daemonizes a clojure process"
+  :url "https://github.com/arohner/leiningen"
+  :license {:name "Eclipse Public License"}
+  :dependencies [com.sun.akuma/akuma "1.4"])

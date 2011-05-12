@@ -1,83 +1,123 @@
 (ns leiningen.daemon
   (:use [leiningen.compile :only [eval-in-project]]
-        [leiningen.classpath :only [make-path get-classpath]])
-  (:import (java.io File)))
+        [leiningen.core :only [abort]]
+        [leiningen.help :only [help-for]])
+  (:import java.io.File)
+  (require [leiningen.daemon-runtime :as runtime])
+  (:use [clojure.contrib.except :only (throwf)]))
 
-(def jsvc-singular-args #{:version :nodetach :debug :check :stop}) ;; jsvc command line args that don't take a parameter
+(defn wait-for
+  "periodically calls test, a fn of no arguments, until it returns
+  true, or timeout (in seconds) exceeded. Calls fail, a fn of no
+  arguments if test never returns true"
+  [test fail timeout]
+  (let [start (System/currentTimeMillis)
+        end (+ start (* timeout 1000))]
+    (while (and (< (System/currentTimeMillis) end) (not (test)))
+           (Thread/sleep 1))
+    (if (< (System/currentTimeMillis) end)
+      true
+      (fail))))
 
-(defn mangle-option [[arg value]]
-  (cond
-   (contains? jsvc-singular-args arg) [(format "-%s" (name arg))]
-   :else [(format "-%s" (name arg)) value]))
+(defn get-pid-path [project alias]
+  (get-in project [:daemon alias :pidfile]))
 
-(defn start-handler [java daemon-map cmdline-args]
-  (doto java
-    (.setJvm "jsvc")
-    (.clearArgs)
-    (.setClassname "leiningen.daemon.daemonProxy"))
-  (.setClasspath java
-                 (:classpath daemon-map))
-  (doseq [option (concat (mapcat mangle-option (:options daemon-map)) ["-Djava.awt.headless=true"])]
-    (.. java (createJvmarg) (setValue option)))
-  (doseq [arg (concat [(:ns daemon-map)] (:args daemon-map) cmdline-args)]
-    (.. java (createArg) (setValue arg)))
-  java)
+(defn pid-present? [project alias]
+  (runtime/get-pid (get-pid-path project alias)))
 
-(defn stop-handler [java daemon-map cmdline-args]
-  (start-handler java daemon-map cmdline-args)
-  (.. java (createJvmarg) (setValue "-stop"))
-  java)
+(defn running? [project alias]
+  (runtime/process-running? (pid-present? project alias)))
 
-(defn check-handler [java daemon-map cmdline-args]
-  (start-handler java daemon-map cmdline-args)
-  (.. java (createJvmarg) (setValue "-check"))
-  java)
+(defn inconsistent?
+  "true if pid is present, and process not running"
+  [project alias]
+  (and (pid-present? project alias) (not (running? project alias))))
 
-;; map of allowed commands to the handler fn
-(def handler-map
-     {"start" start-handler
-      "stop" stop-handler
-      "check" check-handler})
+(defn start-main
+  [project alias & args]
+  (let [ns (get-in project [:daemon alias :ns])
+        timeout (* 5 60)]
+    (if (not (pid-present? project alias))
+      (do
+        (println "forking" alias)
+        (eval-in-project project `(do
+                                    (require 'leiningen.daemon-runtime)
+                                    (leiningen.daemon-runtime/init ~(get-pid-path project alias))
+                                    ((ns-resolve '~(symbol ns) '~'-main) ~@args))
+                         (fn [java]
+                           (.setSpawn java true))
+                         nil `(do
+                                (System/setProperty "leiningen.daemon" "true")
+                                (require '~(symbol ns)))
+                         true)
+        (wait-for #(running? project alias) #(throwf "%s failed to start in %s seconds" alias timeout) timeout)
+        (println "waiting for pid file to appear")
+        (println alias "started")
+        (System/exit 0))
+      (if (running? project alias)
+        (do
+          (println alias "already running")
+          (System/exit 1))
+        (do
+          (println "not starting, pid file present")
+          (System/exit 2))))))
 
-(defn print-usage []
-  (println "Usage:")
-  (println "lein daemon start/stop/check name-of-daemon"))
+(defn stop [project alias]
+  (let [pid (runtime/get-pid (get-pid-path project alias))
+        timeout 60]
+    (when (running? project alias)
+      (println "sending SIGTERM to" pid)
+      (runtime/sigterm pid))
+    (wait-for #(not (running? project alias)) #(throwf "%s failed to stop in %d seconds" alias timeout) timeout)
+    (-> (get-pid-path project alias) (File.) (.delete))))
 
-(defn print-available-daemons [project]
-  (println (count (:daemon project)) "available daemon commands")
-     (doseq [daemon (keys (:daemon project))]
-       (println "   " daemon)))
+(defn check [project alias]
+  (when (running? project alias)
+    (do (println alias "is running") (System/exit 0)))
+  (when (inconsistent? project alias)
+    (do (println alias "pid present, but NOT running") (System/exit 2)))
+  (do (println alias "is NOT running") (System/exit 1)))
 
-(defn run-daemon [project handler daemon cmdline-args]
-  (let [rc (eval-in-project project nil #(handler % daemon cmdline-args))]
-    (when (and (number? rc) (not= 0 rc))
-      ;; note that starting can still fail later on, and we have no
-      ;; way to detect it.
-      (println "FAIL. See the error log for more information"))))
+(defn check-valid-daemon [project alias]
+  (let [d (get-in project [:daemon alias])
+        pid-path (get-in project [:daemon alias :pidfile])]
+    (when (not d)
+      (abort (str "daemon " alias " not found in :daemon section")))
+    (when (not pid-path)
+      (abort (str ":pidfile is required in daemon declaration")))
+    true))
 
-(defn daemon-not-found [project daemon-str]
-  (println "Unrecognized daemon:" daemon-str)
-  (print-available-daemons project))
+(declare usage)
+(defn ^{:help-arglists '([])} daemon
+  "Run a -main function as a daemon, with optional command-line arguments.
 
-(defn unrecognized-command []
-  (println "Unrecognized command. Must be one of " (keys handler-map)))
+In project.clj, define a keyvalue pair that looks like
+ :daemon {:foo {:ns foo.bar
+                :pidfile \"foo.pid\"}}
 
-(defn daemon
-  "starts a daemon process. daemonname is a key in the :daemon map in project.clj to run."
-  ([project cmd daemon-str & cmdline-args]
-     (let [handler (get handler-map cmd)
-           daemon (get-in project [:daemon daemon-str])
-           classpath (apply make-path (concat (map #(str (:root project) File/separator %)
-                                                   (:extra-classpath daemon))
-                                              (get-classpath project)))
-           daemon-with-cp (assoc daemon :classpath classpath)]
-       (cond
-        (and handler daemon) (run-daemon project handler daemon-with-cp cmdline-args)
-        handler (daemon-not-found project daemon-str)
-        daemon (unrecognized-command))))
-  ([project]
-     (print-usage)
-     (print-available-daemons project))
-  ([project _]
-     (print-usage)
-     (print-available-daemons project)))
+USAGE: lein daemon start :foo
+USAGE: lein daemon stop :foo
+USAGE: lein daemon check :foo
+
+this will apply the -main method in foo.bar.
+
+On the start call, additional arguments will be passed to -main
+
+USAGE: lein daemon start :foo bar baz 
+"
+  [project & [command daemon-name & args :as all-args]]
+  (when (or (nil? command)
+            (nil? daemon-name))
+    (print (help-for "daemon"))
+    (abort))
+  (let [command (keyword command)
+        daemon-name (if (keyword? (read-string daemon-name))
+                      (read-string daemon-name)
+                      daemon-name)
+        alias (get-in project [:daemon daemon-name])]
+    (check-valid-daemon project daemon-name)
+    (condp = (keyword command)
+      :start (apply start-main project daemon-name args)
+      :stop (stop project daemon-name)
+      :check (check project daemon-name)
+      (abort (str command " is not a valid command")))))
