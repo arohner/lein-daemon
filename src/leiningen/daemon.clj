@@ -41,13 +41,13 @@
       (do
         (println "forking" alias)
         (eval-in-project project `(do
-                                    (require 'leiningen.daemon-runtime)
                                     (leiningen.daemon-runtime/init ~(get-pid-path project alias))
                                     ((ns-resolve '~(symbol ns) '~'-main) ~@args))
                          (fn [java]
                            (.setSpawn java true))
                          nil `(do
                                 (System/setProperty "leiningen.daemon" "true")
+                                (require 'leiningen.daemon-runtime)
                                 (require '~(symbol ns)))
                          true)
         (wait-for #(running? project alias) #(throwf "%s failed to start in %s seconds" alias timeout) timeout)
@@ -108,8 +108,7 @@ USAGE: lein daemon start :foo bar baz
   [project & [command daemon-name & args :as all-args]]
   (when (or (nil? command)
             (nil? daemon-name))
-    (print (help-for "daemon"))
-    (abort))
+    (abort (help-for "daemon")))
   (let [command (keyword command)
         daemon-name (if (keyword? (read-string daemon-name))
                       (read-string daemon-name)
