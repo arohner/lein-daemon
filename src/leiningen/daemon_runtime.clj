@@ -27,11 +27,13 @@
 
 (defn init
   "do all the post-fork setup. set session id, close file descriptors, chdir to /, write pid file"
-  [pid-path]
+  [pid-path & {:keys [debug]}]
   (.setsid LIBC)
-  (closeDescriptors)
+  (when (not debug)
+    (closeDescriptors))  
   (writePidFile pid-path)
-  (chdirToRoot))
+  ;; (chdirToRoot)
+  )
 
 (defn process-running?
   "returns true if the process with the specified PID is running"

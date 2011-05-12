@@ -41,10 +41,11 @@
       (do
         (println "forking" alias)
         (eval-in-project project `(do
-                                    (leiningen.daemon-runtime/init ~(get-pid-path project alias))
+                                    (leiningen.daemon-runtime/init ~(get-pid-path project alias) :debug ~(get-in project [:daemon alias :debug]))
                                     ((ns-resolve '~(symbol ns) '~'-main) ~@args))
                          (fn [java]
-                           (.setSpawn java true))
+                           (when (not (get-in project [:daemon alias :debug]))
+                             (.setSpawn java true)))
                          nil `(do
                                 (System/setProperty "leiningen.daemon" "true")
                                 (require 'leiningen.daemon-runtime)
