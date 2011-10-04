@@ -3,7 +3,7 @@ Lein-daemon is a lein plugin that starts a clojure process as a daemon. In versi
 To use, add a :daemon option to your project.clj, it looks like
 
     :daemon { :name-of-service {:ns my.name.space
-                                :pidfife "path-to-pidfile.pid"}}
+                                :pidfile "path-to-pidfile.pid"}}
 
 The keys of the daemon map are the names of services that can be started at the command-line. Start a process with "lein daemon start :name-of-service". pidfile specifies where the pid file will be written. This path can be relative to the project directory, or absolute. 
 
