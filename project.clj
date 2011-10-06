@@ -1,4 +1,4 @@
-(defproject lein-daemon "0.4.0"
+(defproject lein-daemon "0.4.1"
   :description "A lein plugin that daemonizes a clojure process"
   :url "https://github.com/arohner/leiningen"
   :license {:name "Eclipse Public License"}

@@ -1,9 +1,9 @@
 (ns leiningen.daemon-runtime
   (:import (org.jruby.ext.posix POSIXFactory
                                 POSIXHandler))
+  (:import java.io.FileOutputStream)
   (:use [clojure.java.shell :only (sh)])
   (:use [clojure.java.io :only (reader)]))
-
 
 (def handler (proxy [POSIXHandler]
                  []
@@ -46,8 +46,9 @@
   (.getpid C))
 
 (defn writePidFile [pid-path]
-  (with-open [w (clojure.java.io/writer pid-path)]
-    (.write w (str (get-current-pid)))))
+  (with-open [w (FileOutputStream. pid-path)]
+    (.write w (-> (get-current-pid) (str) (.getBytes "UTF-8")))
+    (-> w (.getFD) (.sync))))
 
 (defn init
   "do all the post-fork setup. set session id, close file descriptors, chdir to /, write pid file"
@@ -55,9 +56,7 @@
   (.setsid C)
   (when (not debug)
     (closeDescriptors))  
-  (writePidFile pid-path)
-  ;; (chdirToRoot)
-  )
+  (writePidFile pid-path))
 
 (defn process-running?
   "returns true if the process with the specified PID is running"
@@ -73,9 +72,9 @@
   "returns the pid for a given pid-file, or nil"
   [path]
   (try
-   (with-open [r (reader path)]
-    (-> r
-     (slurp)
-     (Integer/parseInt)))
-   (catch java.io.FileNotFoundException e
-     nil)))
+    (with-open [r (reader path)]
+      (-> r
+          (slurp)
+          (Integer/parseInt)))
+    (catch java.io.FileNotFoundException e
+      nil)))
