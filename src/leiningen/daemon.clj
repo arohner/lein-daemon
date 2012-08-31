@@ -38,22 +38,19 @@
         timeout (* 5 60)]
     (if (not (pid-present? project alias))
       (do
-        (println "forking" alias)
-        (eval-in-project project `(do
-                                    (leiningen.daemon-runtime/init ~(get-pid-path project alias) :debug ~(get-in project [:daemon alias :debug]))
-                                    ((ns-resolve '~(symbol ns) '~'-main) ~@args))
-                         (fn [java]
-                           (when (not (get-in project [:daemon alias :debug]))
-                             (.setSpawn java true)))
-                         nil `(do
-                                (System/setProperty "leiningen.daemon" "true")
-                                (require 'leiningen.daemon-runtime)
-                                (require '~(symbol ns)))
-                         true)
-        (wait-for #(running? project alias) #(throwf "%s failed to start in %s seconds" alias timeout) timeout)
-        (println "waiting for pid file to appear")
-        (println alias "started")
-        (System/exit 0))
+        (println "starting" alias)
+        (let [main-process (future (eval-in-project project
+                                                    `(do
+                                                       (System/setProperty "leiningen.daemon" "true")
+                                                       (require 'leiningen.daemon-runtime)
+                                                       (leiningen.daemon-runtime/init ~(get-pid-path project alias) :debug ~(get-in project [:daemon alias :debug]))
+                                                       ((ns-resolve '~(symbol ns) '~'-main) ~@args))
+                                                    `(do
+                                                       (require '~(symbol ns)))))]
+          (wait-for #(running? project alias) #(throw (Exception. (format "%s failed to start in %s seconds" alias timeout))) timeout)
+          (println "waiting for pid file to appear")
+          (println alias "started")
+          @main-process))
       (if (running? project alias)
         (do
           (println alias "already running")
