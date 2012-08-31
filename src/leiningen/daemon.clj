@@ -1,10 +1,9 @@
 (ns leiningen.daemon
-  (:use [leiningen.compile :only [eval-in-project]]
-        [leiningen.core :only [abort]]
+  (:use [leiningen.core.eval :only [eval-in-project]]
+        [leiningen.core.main :only [abort]]
         [leiningen.help :only [help-for]])
   (:import java.io.File)
-  (require [leiningen.daemon-runtime :as runtime])
-  (:use [clojure.contrib.except :only (throwf)]))
+  (require [leiningen.daemon-runtime :as runtime]))
 
 (defn wait-for
   "periodically calls test, a fn of no arguments, until it returns
@@ -69,7 +68,7 @@
     (when (running? project alias)
       (println "sending SIGTERM to" pid)
       (runtime/sigterm pid))
-    (wait-for #(not (running? project alias)) #(throwf "%s failed to stop in %d seconds" alias timeout) timeout)
+    (wait-for #(not (running? project alias)) #(throw (Exception. (format "%s failed to stop in %d seconds" alias timeout))) timeout)
     (-> (get-pid-path project alias) (File.) (.delete))))
 
 (defn check [project alias]
