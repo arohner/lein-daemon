@@ -34,8 +34,10 @@
 
 (defn start-main
   [project alias & args]
-  (let [ns (get-in project [:daemon alias :ns])
-        timeout (* 5 60)]
+  (let [ns          (get-in project [:daemon alias :ns])
+        daemon-args (get-in project [:daemon alias :args] [])
+        all-args    (concat daemon-args args)
+        timeout     (* 5 60)]
     (if (not (pid-present? project alias))
       (do
         (println "starting" alias)
@@ -44,7 +46,7 @@
                                                        (System/setProperty "leiningen.daemon" "true")
                                                        (require 'leiningen.daemon-runtime)
                                                        (leiningen.daemon-runtime/init ~(get-pid-path project alias) :debug ~(get-in project [:daemon alias :debug]))
-                                                       ((ns-resolve '~(symbol ns) '~'-main) ~@args))
+                                                       ((ns-resolve '~(symbol ns) '~'-main) ~@all-args))
                                                     `(do
                                                        (require '~(symbol ns)))))]
           (wait-for #(running? project alias) #(throw (Exception. (format "%s failed to start in %s seconds" alias timeout))) timeout)
