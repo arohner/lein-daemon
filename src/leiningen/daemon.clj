@@ -36,13 +36,15 @@
 (defn start-main
   [project alias & args]
   (let [ns (get-in project [:daemon alias :ns])
+        daemon-args (get-in project [:daemon alias :args] [])
+        all-args (concat daemon-args args)
         timeout (* 5 60)]
     (if (not (pid-present? project alias))
       (do
         (println "forking" alias)
         (eval-in-project project `(do
                                     (leiningen.daemon-runtime/init ~(get-pid-path project alias) :debug ~(get-in project [:daemon alias :debug]))
-                                    ((ns-resolve '~(symbol ns) '~'-main) ~@args))
+                                    ((ns-resolve '~(symbol ns) '~'-main) ~@all-args))
                          (fn [java]
                            (when (not (get-in project [:daemon alias :debug]))
                              (.setSpawn java true)))
