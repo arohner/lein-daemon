@@ -109,8 +109,7 @@ USAGE: lein daemon start :foo bar baz
   (let [command (keyword command)
         daemon-name (if (keyword? (read-string daemon-name))
                       (read-string daemon-name)
-                      daemon-name)
-        alias (get-in project [:daemon daemon-name])]
+                      daemon-name)]
     (check-valid-daemon project daemon-name)
     (condp = (keyword command)
       :start (apply start-main project daemon-name args)
