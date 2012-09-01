@@ -1,10 +1,9 @@
 (ns leiningen.daemon
-  (:use [leiningen.compile :only [eval-in-project]]
-        [leiningen.core :only [abort]]
+  (:use [leiningen.core.eval :only [eval-in-project]]
+        [leiningen.core.main :only [abort]]
         [leiningen.help :only [help-for]])
   (:import java.io.File)
-  (require [leiningen.daemon-runtime :as runtime])
-  (:use [clojure.contrib.except :only (throwf)]))
+  (require [leiningen.daemon-runtime :as runtime]))
 
 (defn wait-for
   "periodically calls test, a fn of no arguments, until it returns
@@ -35,26 +34,25 @@
 
 (defn start-main
   [project alias & args]
-  (let [ns (get-in project [:daemon alias :ns])
-        timeout (* 5 60)]
+  (let [ns          (get-in project [:daemon alias :ns])
+        daemon-args (get-in project [:daemon alias :args] [])
+        all-args    (concat daemon-args args)
+        timeout     (* 5 60)]
     (if (not (pid-present? project alias))
       (do
-        (println "forking" alias)
-        (eval-in-project project `(do
-                                    (leiningen.daemon-runtime/init ~(get-pid-path project alias) :debug ~(get-in project [:daemon alias :debug]))
-                                    ((ns-resolve '~(symbol ns) '~'-main) ~@args))
-                         (fn [java]
-                           (when (not (get-in project [:daemon alias :debug]))
-                             (.setSpawn java true)))
-                         nil `(do
-                                (System/setProperty "leiningen.daemon" "true")
-                                (require 'leiningen.daemon-runtime)
-                                (require '~(symbol ns)))
-                         true)
-        (wait-for #(running? project alias) #(throwf "%s failed to start in %s seconds" alias timeout) timeout)
-        (println "waiting for pid file to appear")
-        (println alias "started")
-        (System/exit 0))
+        (println "starting" alias)
+        (let [main-process (future (eval-in-project project
+                                                    `(do
+                                                       (System/setProperty "leiningen.daemon" "true")
+                                                       (require 'leiningen.daemon-runtime)
+                                                       (leiningen.daemon-runtime/init ~(get-pid-path project alias) :debug ~(get-in project [:daemon alias :debug]))
+                                                       ((ns-resolve '~(symbol ns) '~'-main) ~@all-args))
+                                                    `(do
+                                                       (require '~(symbol ns)))))]
+          (wait-for #(running? project alias) #(throw (Exception. (format "%s failed to start in %s seconds" alias timeout))) timeout)
+          (println "waiting for pid file to appear")
+          (println alias "started")
+          @main-process))
       (if (running? project alias)
         (do
           (println alias "already running")
@@ -69,7 +67,7 @@
     (when (running? project alias)
       (println "sending SIGTERM to" pid)
       (runtime/sigterm pid))
-    (wait-for #(not (running? project alias)) #(throwf "%s failed to stop in %d seconds" alias timeout) timeout)
+    (wait-for #(not (running? project alias)) #(throw (Exception. (format "%s failed to stop in %d seconds" alias timeout))) timeout)
     (-> (get-pid-path project alias) (File.) (.delete))))
 
 (defn check [project alias]
@@ -113,8 +111,7 @@ USAGE: lein daemon start :foo bar baz
   (let [command (keyword command)
         daemon-name (if (keyword? (read-string daemon-name))
                       (read-string daemon-name)
-                      daemon-name)
-        alias (get-in project [:daemon daemon-name])]
+                      daemon-name)]
     (check-valid-daemon project daemon-name)
     (condp = (keyword command)
       :start (apply start-main project daemon-name args)
