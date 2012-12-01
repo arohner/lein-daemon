@@ -1,10 +1,15 @@
 (ns leiningen.daemon
-  (:use [leiningen.compile :only [eval-in-project]]
-        [leiningen.core :only [abort]]
-        [leiningen.help :only [help-for]])
   (:import java.io.File)
-  (require [leiningen.daemon-runtime :as runtime])
-  (:use [clojure.contrib.except :only (throwf)]))
+  (:require [leiningen.core.main :refer (abort)]
+            [leiningen.core.eval :as eval]
+            [leiningen.help :refer (help-for)]
+            [leiningen.daemon.common :as common]))
+
+(defmacro with-deps [form init-form]
+  `(eval/eval-in-project
+    project-dependencies
+    ~form
+    ~init-form))
 
 (defn wait-for
   "periodically calls test, a fn of no arguments, until it returns
@@ -19,58 +24,80 @@
       true
       (fail))))
 
-(defn get-pid-path [project alias]
-  (get-in project [:daemon alias :pidfile]))
+(defn get-pid
+  "read and return the pid number contained in a pid-file, or nil"
+  [path]
+  (try
+    (-> path (slurp) (Integer/parseInt))
+    (catch java.io.FileNotFoundException e
+      nil)
+    ;; this sometimes happens as a race, if the file has been created,
+    ;; but the pid write hasn't fsync'd yet.
+    (catch java.lang.NumberFormatException e
+      nil)))
 
 (defn pid-present? [project alias]
-  (runtime/get-pid (get-pid-path project alias)))
+  (get-pid (common/get-pid-path project alias)))
+
+(defn process-running?
+  "returns true if the process with the specified PID is running"
+  [pid]
+  (with-deps
+    `(leiningen.daemon.runtime/process-running? ~pid)
+    `(require 'leiningen.daemon.runtime)))
 
 (defn running? [project alias]
-  (runtime/process-running? (pid-present? project alias)))
+  {:post [(do (println "running?:" %) true)]}
+  (time (process-running? (time (pid-present? project alias)))))
 
 (defn inconsistent?
   "true if pid is present, and process not running"
   [project alias]
   (and (pid-present? project alias) (not (running? project alias))))
 
+(defn spawn [& cmd]
+  (with-deps
+    `(leiningen.daemon.runtime/spawn ~@cmd)
+    `(require '[leiningen.daemon.runtime])))
+
+(defn do-start [project alias]
+  (let [timeout (* 5 60)
+        trampoline-file (System/getProperty "leiningen.trampoline-file")]
+    (println "pid not present, starting")
+    ;;(spawn "lein" "daemon-stage2")
+    (spit trampoline-file (format "lein daemon-start %s" alias))
+    ;; (println "waiting for pid file to appear")
+    ;; (wait-for #(running? project alias) #(throwf (format "%s failed to start in %s seconds" alias timeout)) timeout)
+    ;; (println alias "started")
+    ;; (System/exit 0)
+    ))
+
 (defn start-main
   [project alias & args]
-  (let [ns (get-in project [:daemon alias :ns])
-        timeout (* 5 60)]
-    (if (not (pid-present? project alias))
+  (println "start-main:" alias args)
+  (if (not (pid-present? project alias))
+    (do-start project alias)
+    (if (running? project alias)
       (do
-        (println "forking" alias)
-        (eval-in-project project `(do
-                                    (leiningen.daemon-runtime/init ~(get-pid-path project alias) :debug ~(get-in project [:daemon alias :debug]))
-                                    ((ns-resolve '~(symbol ns) '~'-main) ~@args))
-                         (fn [java]
-                           (when (not (get-in project [:daemon alias :debug]))
-                             (.setSpawn java true)))
-                         nil `(do
-                                (System/setProperty "leiningen.daemon" "true")
-                                (require 'leiningen.daemon-runtime)
-                                (require '~(symbol ns)))
-                         true)
-        (wait-for #(running? project alias) #(throwf "%s failed to start in %s seconds" alias timeout) timeout)
-        (println "waiting for pid file to appear")
-        (println alias "started")
-        (System/exit 0))
-      (if (running? project alias)
-        (do
-          (println alias "already running")
-          (System/exit 1))
-        (do
-          (println "not starting, pid file present")
-          (System/exit 2))))))
+        (println alias "already running")
+        (System/exit 1))
+      (do
+        (println "not starting, pid file present")
+        (System/exit 2)))))
+
+(defn sigterm [pid]
+  (with-deps
+    `(runtime/sigterm ~pid)
+    `(require '[leiningen.daemon.runtime :as runtime])))
 
 (defn stop [project alias]
-  (let [pid (runtime/get-pid (get-pid-path project alias))
+  (let [pid (get-pid (common/get-pid-path project alias))
         timeout 60]
     (when (running? project alias)
       (println "sending SIGTERM to" pid)
-      (runtime/sigterm pid))
+      (sigterm pid))
     (wait-for #(not (running? project alias)) #(throwf "%s failed to stop in %d seconds" alias timeout) timeout)
-    (-> (get-pid-path project alias) (File.) (.delete))))
+    (-> (common/get-pid-path project alias) (File.) (.delete))))
 
 (defn check [project alias]
   (when (running? project alias)
@@ -81,18 +108,22 @@
 
 (defn check-valid-daemon [project alias]
   (let [d (get-in project [:daemon alias])
-        pid-path (get-in project [:daemon alias :pidfile])]
+        pid-path (common/get-pid-path project alias)]
     (when (not d)
       (abort (str "daemon " alias " not found in :daemon section")))
     (when (not pid-path)
       (abort (str ":pidfile is required in daemon declaration")))
     true))
 
+(defn abort-when-not [expr message & message-args]
+  (when-not expr
+    (abort (apply format message message-args))))
+
 (declare usage)
 (defn ^{:help-arglists '([])} daemon
   "Run a -main function as a daemon, with optional command-line arguments.
 
-In project.clj, define a keyvalue pair that looks like
+In project.clj, add a field pair that looks like
  :daemon {:foo {:ns foo.bar
                 :pidfile \"foo.pid\"}}
 
@@ -102,9 +133,9 @@ USAGE: lein daemon check :foo
 
 this will apply the -main method in foo.bar.
 
-On the start call, additional arguments will be passed to -main
+On the start call, any additional arguments will be passed to -main
 
-USAGE: lein daemon start :foo bar baz 
+USAGE: lein daemon start :foo bar baz
 "
   [project & [command daemon-name & args :as all-args]]
   (when (or (nil? command)
