@@ -1,9 +1,6 @@
-(ns leiningen.daemon.common)
-
-(def project-dependencies {:dependencies '[[me.raynes/conch "0.4.0"]
-                                           [com.sun.jna/jna "3.0.9"]
-                                           [org.jruby.ext.posix/jna-posix "1.0.3"]
-                                           [lein-daemon-runtime "0.5.0"]]})
+(ns leiningen.daemon.common
+  ;; this will be loaded by leiningen.daemon, so it can't have any dependencies not in lein
+  (:require [clojure.java.shell :as sh]))
 
 (defn throwf [& message]
   (throw (Exception. (apply format message))))
@@ -16,3 +13,22 @@
 
 (defn debug? [project alias]
   (get-in project [:daemon alias :debug]))
+
+(defn sh! [& args]
+  (let [resp (apply sh/sh args)
+        exit-code (:exit resp)]
+    (when (not (zero? exit-code))
+      (printf "%s returned %s: %s\n" args exit-code resp)
+      (throwf "%s returned %s" args exit-code))
+    resp))
+
+(defn ps [pid]
+  (sh/sh "ps" (str pid)))
+
+(defn process-running?
+  "returns true if the process with the specified PID is running"
+  [pid]
+  (-> (ps pid) :exit zero?))
+
+(defn sigterm [pid]
+  (sh/sh "kill" "-SIGTERM" (str pid)))

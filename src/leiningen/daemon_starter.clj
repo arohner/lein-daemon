@@ -1,5 +1,6 @@
 (ns leiningen.daemon-starter
   (:require [leiningen.core.eval :as eval]
+            [leiningen.core.main :refer (abort)]
             [leiningen.daemon.common :as common]))
 
 (defn add-daemon-runtime-dependency
@@ -13,13 +14,10 @@
         ns (symbol (:ns info))
         pid-path (common/get-pid-path project alias)
         debug? (common/debug? project alias)]
-    (println "project=" project)
-    (println "ns=" ns)
     (eval/eval-in-project (add-daemon-runtime-dependency project)
                           `(do
                              (leiningen.daemon.runtime/init ~pid-path :debug ~debug?)
                              (let [main# (ns-resolve '~ns '~'main)]
-                               (println "main=" main#)
                                (main# ~@args)))
                           `(do
                              (System/setProperty "leiningen.daemon" "true")

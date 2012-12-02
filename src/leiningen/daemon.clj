@@ -1,15 +1,10 @@
 (ns leiningen.daemon
   (:import java.io.File)
-  (:require [leiningen.core.main :refer (abort)]
+  (:require [clojure.java.shell :as sh]
+            [leiningen.core.main :refer (abort)]
             [leiningen.core.eval :as eval]
             [leiningen.help :refer (help-for)]
             [leiningen.daemon.common :as common]))
-
-(defmacro with-deps [form init-form]
-  `(eval/eval-in-project
-    project-dependencies
-    ~form
-    ~init-form))
 
 (defn wait-for
   "periodically calls test, a fn of no arguments, until it returns
@@ -36,67 +31,57 @@
     (catch java.lang.NumberFormatException e
       nil)))
 
-(defn pid-present? [project alias]
+(defn pid-present?
+  "Returns the pid contained in the pidfile, if present, else nil"
+  [project alias]
   (get-pid (common/get-pid-path project alias)))
 
-(defn process-running?
-  "returns true if the process with the specified PID is running"
-  [pid]
-  (with-deps
-    `(leiningen.daemon.runtime/process-running? ~pid)
-    `(require 'leiningen.daemon.runtime)))
-
-(defn running? [project alias]
-  {:post [(do (println "running?:" %) true)]}
-  (time (process-running? (time (pid-present? project alias)))))
+(defn running?
+  "True if there's a process running with the pid contained in the pidfile"
+  [project alias]
+  (let [pid (pid-present? project alias)]
+    (when pid
+      (println "found pid" pid)))
+  (common/process-running? (pid-present? project alias)))
 
 (defn inconsistent?
   "true if pid is present, and process not running"
   [project alias]
   (and (pid-present? project alias) (not (running? project alias))))
 
-(defn spawn [& cmd]
-  (with-deps
-    `(leiningen.daemon.runtime/spawn ~@cmd)
-    `(require '[leiningen.daemon.runtime])))
+(defn wait-for-running [project alias & {:keys [timeout]
+                                         :or {timeout 300}}]
+  (println "waiting for pid file to appear")
+  (wait-for #(running? project alias)
+            #(common/throwf (format "%s failed to start in %s seconds" alias timeout)) timeout)
+  (println alias "started"))
 
 (defn do-start [project alias]
   (let [timeout (* 5 60)
-        trampoline-file (System/getProperty "leiningen.trampoline-file")]
+        trampoline-file (System/getProperty "leiningen.trampoline-file")
+        lein (System/getProperty "leiningen.script")]
+    (println "lein=" lein)
     (println "pid not present, starting")
-    ;;(spawn "lein" "daemon-stage2")
-    (spit trampoline-file (format "lein daemon-start %s" alias))
-    ;; (println "waiting for pid file to appear")
-    ;; (wait-for #(running? project alias) #(throwf (format "%s failed to start in %s seconds" alias timeout)) timeout)
-    ;; (println alias "started")
-    ;; (System/exit 0)
-    ))
+    (let [resp (common/sh! "bash" "-c" (format "nohup lein2 daemon-starter %s </dev/null &> out.log &" alias))]
+      (println resp))
+    (wait-for-running project alias)))
 
 (defn start-main
   [project alias & args]
-  (println "start-main:" alias args)
-  (if (not (pid-present? project alias))
-    (do-start project alias)
-    (if (running? project alias)
-      (do
-        (println alias "already running")
-        (System/exit 1))
-      (do
-        (println "not starting, pid file present")
-        (System/exit 2)))))
-
-(defn sigterm [pid]
-  (with-deps
-    `(runtime/sigterm ~pid)
-    `(require '[leiningen.daemon.runtime :as runtime])))
+  (let [running? (running? project alias)
+        pid-present? (pid-present? project alias)]
+    (cond
+     running? (abort "already running")
+     pid-present? (abort "not starting, pid file present")
+     :else (do-start project alias))))
 
 (defn stop [project alias]
   (let [pid (get-pid (common/get-pid-path project alias))
         timeout 60]
     (when (running? project alias)
       (println "sending SIGTERM to" pid)
-      (sigterm pid))
-    (wait-for #(not (running? project alias)) #(throwf "%s failed to stop in %d seconds" alias timeout) timeout)
+      (common/sigterm pid))
+    (wait-for #(not (running? project alias)) #(common/throwf "%s failed to stop in %d seconds" alias timeout) timeout)
     (-> (common/get-pid-path project alias) (File.) (.delete))))
 
 (defn check [project alias]

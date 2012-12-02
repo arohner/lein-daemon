@@ -3,8 +3,7 @@
            (org.jruby.ext.posix POSIXFactory
                                 POSIXHandler))
   (:require [clojure.java.io :refer (reader)]
-            [conch.sh :as sh]
-            [conch.core :as conch]))
+            [clojure.java.shell :as sh]))
 
 (defn throwf [& message]
   (throw (Exception. (apply format message))))
@@ -53,28 +52,9 @@
 (defn write-pid-file
   "Write the pid of the current process to pid-path"
   [pid-path]
-  (spit pid-path (str (get-current-pid))))
-
-(defn process-running?
-  "returns true if the process with the specified PID is running"
-  [pid]
-  (sh/with-programs [ps]
-    (-> (ps (str pid) {:verbose true})
-        :exit-code
-        deref
-        zero?)))
-
-(defn spawn
-  "Takes a seq of strings to be started in a subprocess. Does not wait
-  for the subprocess to exit"
-  [& cmd]
-  (let [args (concat ["nohup"] cmd)
-        _ (println "spawn: args=" args)
-        {:keys [in out err process] :as proc} (apply conch/proc args)]
-    (future (conch/stream-to-out proc :out))
-    ;;(.close in)
-    ;;(conch/done proc)
-    proc))
+  (let [pid (str (get-current-pid))]
+    (printf "writing pid %s to %s" pid pid-path)
+    (spit pid-path pid)))
 
 (defn init
   "do all the post-fork setup. set session id, close file descriptors, write pid file"
