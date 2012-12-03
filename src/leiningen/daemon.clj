@@ -92,12 +92,9 @@
   (do (println alias "is NOT running") (System/exit 1)))
 
 (defn check-valid-daemon [project alias]
-  (let [d (get-in project [:daemon alias])
-        pid-path (common/get-pid-path project alias)]
+  (let [d (get-in project [:daemon alias])]
     (when (not d)
       (abort (str "daemon " alias " not found in :daemon section")))
-    (when (not pid-path)
-      (abort (str ":pidfile is required in daemon declaration")))
     true))
 
 (defn abort-when-not [expr message & message-args]

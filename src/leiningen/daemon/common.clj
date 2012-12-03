@@ -8,8 +8,11 @@
 (defn daemon-info-exists? [project alias]
   (get-in project [:daemon alias]))
 
+(defn default-pid-name [alias]
+  (format "%s.pid" alias))
+
 (defn get-pid-path [project alias]
-  (get-in project [:daemon alias :pidfile]))
+  (get-in project [:daemon alias :pidfile] (default-pid-name alias)))
 
 (defn debug? [project alias]
   (get-in project [:daemon alias :debug]))
