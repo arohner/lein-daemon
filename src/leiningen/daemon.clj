@@ -75,6 +75,9 @@
      pid-present? (abort "not starting, pid file present")
      :else (do-start project alias))))
 
+(defn delete-pid [project alias]
+  (-> (common/get-pid-path project alias) (File.) (.delete)))
+
 (defn stop [project alias]
   (let [pid (get-pid (common/get-pid-path project alias))
         timeout 60]
@@ -82,7 +85,7 @@
       (println "sending SIGTERM to" pid)
       (common/sigterm pid))
     (wait-for #(not (running? project alias)) #(common/throwf "%s failed to stop in %d seconds" alias timeout) timeout)
-    (-> (common/get-pid-path project alias) (File.) (.delete))))
+    (delete-pid project alias)))
 
 (defn check [project alias]
   (when (running? project alias)
