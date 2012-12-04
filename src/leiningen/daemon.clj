@@ -62,7 +62,7 @@
         lein (System/getProperty "leiningen.script")]
     (println "lein=" lein)
     (println "pid not present, starting")
-    (let [resp (common/sh! "bash" "-c" (format "nohup lein2 daemon-starter %s </dev/null &> %s.log &" alias alias))]
+    (let [resp (common/sh! "bash" "-c" (format "nohup %s daemon-starter %s </dev/null &> %s.log &" lein alias alias))]
       (println resp))
     (wait-for-running project alias)))
 
