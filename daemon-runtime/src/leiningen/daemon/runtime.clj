@@ -53,8 +53,14 @@
   "Write the pid of the current process to pid-path"
   [pid-path]
   (let [pid (str (get-current-pid))]
-    (printf "writing pid %s to %s" pid pid-path)
+    (printf "writing pid %s to %s\n" pid pid-path)
     (spit pid-path pid)))
+
+(defn abort
+  "Abort, once we're in the user's project, so leiningen.core.main/abort isn't available"
+  [message]
+  (println message)
+  (System/exit 1))
 
 (defn init
   "do all the post-fork setup. set session id, close file descriptors, write pid file"
