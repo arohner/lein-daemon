@@ -6,7 +6,7 @@
   [project]
   (if (some #(= 'lein-daemon-runtime (first %)) (:dependencies project))
     project
-    (update-in project [:dependencies] conj ['lein-daemon-runtime "0.5.0-fcc70a204ed93c0409e6887cef29238c736f989e"])))
+    (update-in project [:dependencies] conj ['lein-daemon-runtime "0.5.0-59423401dc1c94e40299be3acc29635b9803c824"])))
 
 (defn daemon-starter [project & [alias daemon-name & args :as all-args]]
   (let [info (get-in project [:daemon alias])
