@@ -39,9 +39,6 @@
 (defn running?
   "True if there's a process running with the pid contained in the pidfile"
   [project alias]
-  (let [pid (pid-present? project alias)]
-    (when pid
-      (println "found pid" pid)))
   (common/process-running? (pid-present? project alias)))
 
 (defn inconsistent?
