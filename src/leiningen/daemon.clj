@@ -55,12 +55,11 @@
 
 (defn do-start [project alias]
   (let [timeout (* 5 60)
-        trampoline-file (System/getProperty "leiningen.trampoline-file")
         lein (System/getProperty "leiningen.script")]
-    (println "lein=" lein)
     (println "pid not present, starting")
-    (let [resp (common/sh! "bash" "-c" (format "nohup %s daemon-starter %s </dev/null &> %s.log &" lein alias alias))]
-      (println resp))
+    (when-not lein
+      (abort "lein-daemon requires lein-2.0.0-RC1 or later"))
+    (common/sh! "bash" "-c" (format "nohup %s daemon-starter %s </dev/null &> %s.log &" lein alias alias))
     (wait-for-running project alias)))
 
 (defn start-main
