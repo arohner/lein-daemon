@@ -16,10 +16,10 @@ Install
 add lein-daemon to your leiningen project file, as a plugin::
 
 ```clojure
-    :plugins [[lein-daemon "0.5.0"]]
+    :plugins [[lein-daemon "0.5.1"]]
 ```
 
-lein-daemon 0.5 and higher requires lein-2.0.0-RC1 or later. For lein1 support, use lein-daemon 0.4.x
+lein-daemon 0.5.0 and higher requires lein-2.0.0-RC1 or later. For lein1 support, use lein-daemon 0.4.x
 
 
 lein-daemon requires JNA to load the C standard library, so if you're using an uncommon JVM, you might need to install JNA on your box. If you're running Hotspot, you're probably fine.
