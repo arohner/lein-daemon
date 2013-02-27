@@ -5,14 +5,14 @@
 (defn throwf [& message]
   (throw (Exception. (apply format message))))
 
-(defn daemon-info-exists? [project alias]
-  (get-in project [:daemon alias]))
+(defn daemon-info-exists? [project daemon-name]
+  (get-in project [:daemon daemon-name]))
 
-(defn default-pid-name [alias]
-  (format "%s.pid" alias))
+(defn default-pid-name [daemon-name]
+  (format "%s.pid" (name daemon-name)))
 
-(defn get-pid-path [project alias]
-  (get-in project [:daemon alias :pidfile] (default-pid-name alias)))
+(defn get-pid-path [project daemon-name]
+  (get-in project [:daemon daemon-name :pidfile] (default-pid-name daemon-name)))
 
 (defn get-daemon-name [project name]
   (cond
@@ -20,8 +20,8 @@
    (get-in project [:daemon (keyword name)]) (keyword name)
    :else (throw (Exception. (str "daemon " name " not found in :daemon section")))))
 
-(defn debug? [project alias]
-  (get-in project [:daemon alias :debug]))
+(defn debug? [project daemon-name]
+  (get-in project [:daemon daemon-name :debug]))
 
 (defn sh! [& args]
   (let [resp (apply sh/sh args)
