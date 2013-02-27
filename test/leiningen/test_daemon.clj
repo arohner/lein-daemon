@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [bond.james :as bond]
             [leiningen.core.main :refer (abort)]
+            [leiningen.core.project :as project]
             [leiningen.daemon :as daemon]
             [leiningen.daemon-starter :as starter]
             [leiningen.daemon.common :as common]))
@@ -62,7 +63,8 @@
                                   :dependencies ['[org.clojure/clojure "1.4.0"]]}))
 
 (deftest daemon-starter-finds-string-info
-  (starter/daemon-starter (merge dummy-project :daemon {"foo" {:ns "bogus.main"}}) "foo"))
+
+  (starter/daemon-starter (merge dummy-project {:daemon {"foo" {:ns "bogus.main"}}}) "foo"))
 
 (deftest daemon-starter-finds-keyword-daemon
   (starter/daemon-starter (merge dummy-project {:daemon {:foo {:ns "bogus.main"}}}) "foo"))
