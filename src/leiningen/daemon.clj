@@ -121,7 +121,7 @@ USAGE: lein daemon start :foo bar baz
             (nil? daemon-name))
     (abort (help-for "daemon")))
   (let [command (keyword command)
-        daemon-name (find-daemon-name project (name (read-string daemon-name)))
+        daemon-name (common/get-daemon-name project (name (read-string daemon-name)))
         daemon-args (get-in project [:daemon daemon-name :args])
         args (concat daemon-args args)]
     (condp = (keyword command)
