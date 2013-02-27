@@ -12,8 +12,8 @@
   (let [daemon-name (common/get-daemon-name project daemon-name)
         info (get-in project [:daemon daemon-name])
         ns (symbol (:ns info))
-        pid-path (common/get-pid-path project alias)
-        debug? (common/debug? project alias)]
+        pid-path (common/get-pid-path project daemon-name)
+        debug? (common/debug? project daemon-name)]
     (eval/eval-in-project (add-daemon-runtime-dependency project)
                           `(do
                              (leiningen.daemon.runtime/init ~pid-path :debug ~debug?)
