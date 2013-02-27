@@ -58,7 +58,7 @@
   (let [timeout (* 5 60)
         lein (System/getProperty "leiningen.script")
         arg-str (str/join " " args)
-        log-file (format "%s.log" alias)
+        log-file (format "%s.log" (name alias))
         nohup-cmd (format "nohup %s daemon-starter %s %s </dev/null &> %s &" lein (name alias) arg-str log-file)]
     (println "pid not present, starting")
     (when-not lein
