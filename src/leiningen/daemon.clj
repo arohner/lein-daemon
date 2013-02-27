@@ -58,7 +58,7 @@
   (let [timeout (* 5 60)
         lein (System/getProperty "leiningen.script")
         arg-str (str/join " " args)
-        log-file (format "%s.log" alias)
+        log-file (format "%s.log" (name alias))
         nohup-cmd (format "nohup %s daemon-starter %s %s </dev/null &> %s &" lein (name alias) arg-str log-file)]
     (println "pid not present, starting")
     (when-not lein
@@ -121,7 +121,7 @@ USAGE: lein daemon start :foo bar baz
             (nil? daemon-name))
     (abort (help-for "daemon")))
   (let [command (keyword command)
-        daemon-name (find-daemon-name project (name (read-string daemon-name)))
+        daemon-name (common/get-daemon-name project (name (read-string daemon-name)))
         daemon-args (get-in project [:daemon daemon-name :args])
         args (concat daemon-args args)]
     (condp = (keyword command)
