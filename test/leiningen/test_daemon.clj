@@ -60,10 +60,10 @@
 
 (deftest daemon-starter-finds-string-info
   (starter/daemon-starter {:dependencies '[[org.clojure/clojure "1.4.0"]]
-                           :source-paths ["./test/leiningen/src"]
+                           :eval-in :leiningen
                            :daemon {"foo" {:ns "bogus.main"}}} "foo"))
 
 (deftest daemon-starter-finds-keyword-daemon
   (starter/daemon-starter {:dependencies '[[org.clojure/clojure "1.4.0"]]
-                           :source-paths ["./test/leiningen/src"]
+                           :eval-in :leiningen
                            :daemon {:foo {:ns "bogus.main"}}} "foo"))
