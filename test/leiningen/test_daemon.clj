@@ -58,14 +58,11 @@
        (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
          (is (re-find #"lein daemon-starter foo" bash-cmd)))))))
 
+(def dummy-project (project/make {:eval-in :subprocess
+                                  :dependencies ['[org.clojure/clojure "1.4.0"]]}))
+
 (deftest daemon-starter-finds-string-info
-  (starter/daemon-starter {:eval-in :subprocess
-                           :dependencies ['[org.clojure/clojure "1.4.0"]]
-                           :source-paths ["src"]
-                           :daemon {"foo" {:ns "bogus.main"}}} "foo"))
+  (starter/daemon-starter (merge dummy-project :daemon {"foo" {:ns "bogus.main"}}) "foo"))
 
 (deftest daemon-starter-finds-keyword-daemon
-  (starter/daemon-starter {:eval-in :subprocess
-                           :dependencies ['[org.clojure/clojure "1.4.0"]]
-                           :source-paths ["src"]
-                           :daemon {:foo {:ns "bogus.main"}}} "foo"))
+  (starter/daemon-starter (merge dummy-project {:daemon {:foo {:ns "bogus.main"}}}) "foo"))
