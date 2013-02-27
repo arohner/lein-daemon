@@ -49,7 +49,7 @@
 
 (defn wait-for-running [project alias & {:keys [timeout]
                                          :or {timeout 300}}]
-  (printf "waiting for pid file to appear at %s\n" (common/get-pid-path project alias))
+  (println "waiting for pid file to appear at" (common/get-pid-path project alias))
   (wait-for #(running? project alias)
             #(common/throwf (format "%s failed to start in %s seconds" alias timeout)) timeout)
   (println alias "started"))
