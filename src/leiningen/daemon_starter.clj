@@ -8,8 +8,9 @@
     project
     (update-in project [:dependencies] conj ['lein-daemon-runtime "0.5.0"])))
 
-(defn daemon-starter [project & [alias daemon-name & args :as all-args]]
-  (let [info (get-in project [:daemon alias])
+(defn daemon-starter [project & [daemon-name & args :as all-args]]
+  (let [daemon-name (common/get-daemon-name project daemon-name)
+        info (get-in project [:daemon daemon-name])
         ns (symbol (:ns info))
         pid-path (common/get-pid-path project alias)
         debug? (common/debug? project alias)]

@@ -1,6 +1,7 @@
 (ns leiningen.daemon
   (:import java.io.File)
-  (:require [clojure.java.shell :as sh]
+  (:require [clojure.string :as str]
+            [clojure.java.shell :as sh]
             [leiningen.core.main :refer (abort)]
             [leiningen.core.eval :as eval]
             [leiningen.help :refer (help-for)]
@@ -53,23 +54,26 @@
             #(common/throwf (format "%s failed to start in %s seconds" alias timeout)) timeout)
   (println alias "started"))
 
-(defn do-start [project alias]
+(defn do-start [project alias args]
   (let [timeout (* 5 60)
-        lein (System/getProperty "leiningen.script")]
+        lein (System/getProperty "leiningen.script")
+        arg-str (str/join " " args)
+        log-file (format "%s.log" alias)
+        nohup-cmd (format "nohup %s daemon-starter %s %s </dev/null &> %s &" lein (name alias) arg-str log-file)]
     (println "pid not present, starting")
     (when-not lein
       (abort "lein-daemon requires lein-2.0.0-RC1 or later"))
-    (common/sh! "bash" "-c" (format "nohup %s daemon-starter %s </dev/null &> %s.log &" lein alias alias))
+    (common/sh! "bash" "-c" nohup-cmd)
     (wait-for-running project alias)))
 
 (defn start-main
-  [project alias & args]
+  [project alias args]
   (let [running? (running? project alias)
         pid-present? (pid-present? project alias)]
     (cond
      running? (abort "already running")
      pid-present? (abort "not starting, pid file present")
-     :else (do-start project alias))))
+     :else (do-start project alias args))))
 
 (defn delete-pid [project alias]
   (-> (common/get-pid-path project alias) (File.) (.delete)))
@@ -89,12 +93,6 @@
   (when (inconsistent? project alias)
     (do (println alias "pid present, but NOT running") (System/exit 2)))
   (do (println alias "is NOT running") (System/exit 1)))
-
-(defn check-valid-daemon [project alias]
-  (let [d (get-in project [:daemon alias])]
-    (when (not d)
-      (abort (str "daemon " alias " not found in :daemon section")))
-    true))
 
 (defn abort-when-not [expr message & message-args]
   (when-not expr
@@ -123,13 +121,11 @@ USAGE: lein daemon start :foo bar baz
             (nil? daemon-name))
     (abort (help-for "daemon")))
   (let [command (keyword command)
-        daemon-name (if (keyword? (read-string daemon-name))
-                      (read-string daemon-name)
-                      daemon-name)
-        alias (get-in project [:daemon daemon-name])]
-    (check-valid-daemon project daemon-name)
+        daemon-name (find-daemon-name project (name (read-string daemon-name)))
+        daemon-args (get-in project [:daemon daemon-name :args])
+        args (concat daemon-args args)]
     (condp = (keyword command)
-      :start (apply start-main project daemon-name args)
+      :start (start-main project daemon-name args)
       :stop (stop project daemon-name)
       :check (check project daemon-name)
       (abort (str command " is not a valid command")))))

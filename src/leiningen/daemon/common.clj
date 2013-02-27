@@ -14,6 +14,12 @@
 (defn get-pid-path [project alias]
   (get-in project [:daemon alias :pidfile] (default-pid-name alias)))
 
+(defn get-daemon-name [project name]
+  (cond
+   (get-in project [:daemon name]) name
+   (get-in project [:daemon (keyword name)]) (keyword name)
+   :else (throw (Exception. (str "daemon " name " not found in :daemon section")))))
+
 (defn debug? [project alias]
   (get-in project [:daemon alias :debug]))
 
