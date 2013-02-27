@@ -54,11 +54,14 @@
             #(common/throwf (format "%s failed to start in %s seconds" alias timeout)) timeout)
   (println alias "started"))
 
+(defn get-lein-script []
+  (System/getProperty "leiningen.script"))
+
 (defn do-start [project alias args]
   (let [timeout (* 5 60)
-        lein (System/getProperty "leiningen.script")
         arg-str (str/join " " args)
         log-file (format "%s.log" alias)
+        lein (get-lein-script)
         nohup-cmd (format "nohup %s daemon-starter %s %s </dev/null &> %s &" lein (name alias) arg-str log-file)]
     (println "pid not present, starting")
     (when-not lein

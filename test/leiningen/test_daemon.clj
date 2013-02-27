@@ -15,6 +15,10 @@
                          (throw (Exception. msg#)))]
      ~@body))
 
+(defmacro with-standard-lein-name [& body]
+  `(with-redefs [daemon/get-lein-script (constantly "lein")]
+     ~@body))
+
 (defmacro with-no-spawn [& body]
   `(bond/with-stub [common/sh! daemon/wait-for-running]
      ~@body))
@@ -22,42 +26,47 @@
 (deftest daemon-args-are-passed-to-do-start
   (with-no-spawn
     (throw-on-abort
-     (let [project {:daemon {"foo" {:pidfile "foo.pid"
-                                    :args ["bar" "baz"]}}}]
-       (daemon/daemon project "start" "foo")
-       (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
-         (is (re-find #"lein daemon-starter foo bar baz" bash-cmd)))))))
+     (with-standard-lein-name
+       (let [project {:daemon {"foo" {:pidfile "foo.pid"
+                                      :args ["bar" "baz"]}}}]
+         (daemon/daemon project "start" "foo")
+         (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
+           (is (re-find #"lein daemon-starter foo bar baz" bash-cmd))))))))
 
 (deftest cmd-line-args-are-passed-to-do-start
   (with-no-spawn
-    (let [project {:daemon {"foo" {:pidfile "foo.pid"}}}]
-      (daemon/daemon project "start" "foo" "bar")
-      (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
-        (is (re-find #"lein daemon-starter foo bar" bash-cmd))))))
+    (with-standard-lein-name
+      (let [project {:daemon {"foo" {:pidfile "foo.pid"}}}]
+        (daemon/daemon project "start" "foo" "bar")
+        (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
+          (is (re-find #"lein daemon-starter foo bar" bash-cmd)))))))
 
 (deftest daemon-cmd-line-args-are-combined
   (with-no-spawn
-    (let [project {:daemon {"foo" {:pidfile "foo.pid"
-                                   :args ["bar"]}}}]
-      (daemon/daemon project "start" "foo" "baz")
-      (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
-        (is (re-find #"lein daemon-starter foo bar baz" bash-cmd))))))
+    (with-standard-lein-name
+      (let [project {:daemon {"foo" {:pidfile "foo.pid"
+                                     :args ["bar"]}}}]
+        (daemon/daemon project "start" "foo" "baz")
+        (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
+          (is (re-find #"lein daemon-starter foo bar baz" bash-cmd)))))))
 
 (deftest passing-string-foo-on-cmd-line-finds-keyword-foo
   (with-no-spawn
     (throw-on-abort
-     (let [project {:daemon {:foo {:ns "foo.bar"}}}]
-       (daemon/daemon project "start" "foo")
-       (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
-         (is (re-find #"lein daemon-starter foo" bash-cmd)))))))
+     (with-standard-lein-name
+       (let [project {:daemon {:foo {:ns "foo.bar"}}}]
+         (daemon/daemon project "start" "foo")
+         (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
+           (is (re-find #"lein daemon-starter foo" bash-cmd))))))))
 
 (deftest passing-string-foo-on-cmd-line-finds-string-foo
   (with-no-spawn
     (throw-on-abort
-     (let [project {:daemon {"foo" {:ns "foo.bar"}}}]
+     (with-standard-lein-name
+       (let [project {:daemon {"foo" {:ns "foo.bar"}}}]
        (daemon/daemon project "start" "foo")
        (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
-         (is (re-find #"lein daemon-starter foo" bash-cmd)))))))
+         (is (re-find #"lein daemon-starter foo" bash-cmd))))))))
 
 (def dummy-project (project/make {:eval-in :subprocess
                                   :dependencies ['[org.clojure/clojure "1.4.0"]]}))
