@@ -78,3 +78,11 @@
 
 (deftest daemon-starter-finds-keyword-daemon
   (starter/daemon-starter (merge dummy-project {:daemon {:foo {:ns "bogus.main"}}}) "foo"))
+
+(deftest log-files-dont-include-colon
+  (with-no-spawn
+    (with-no-spawn
+      (let [project {:daemon {:foo {:ns "foo.bar"}}}]
+        (daemon/daemon project "start" "foo")
+        (let [bash-cmd (str/join " " (-> common/sh! bond/calls first :args))]
+          (is (re-find #"> foo.log" bash-cmd)))))))

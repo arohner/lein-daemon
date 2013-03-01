@@ -60,9 +60,10 @@
 (defn do-start [project alias args]
   (let [timeout (* 5 60)
         arg-str (str/join " " args)
+        alias (name alias)
         log-file (format "%s.log" alias)
         lein (get-lein-script)
-        nohup-cmd (format "nohup %s daemon-starter %s %s </dev/null &> %s &" lein (name alias) arg-str log-file)]
+        nohup-cmd (format "nohup %s daemon-starter %s %s </dev/null &> %s &" lein alias arg-str log-file)]
     (println "pid not present, starting")
     (when-not lein
       (abort "lein-daemon requires lein-2.0.0-RC1 or later"))
