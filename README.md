@@ -16,7 +16,7 @@ Install
 add lein-daemon to your leiningen project file, as a plugin::
 
 ```clojure
-    :plugins [[lein-daemon "0.5.1"]]
+    :plugins [[lein-daemon "0.5.4"]]
 ```
 
 lein-daemon 0.5.0 and higher requires lein-2.0.0-RC1 or later. For lein1 support, use lein-daemon 0.4.x
@@ -30,7 +30,7 @@ Like `lein run`, `lein daemon` will call a function named `-main`, in the namesp
 
 Operation
 =========
-Lein daemon currently has three commands, `start`, `stop`, `check`. Start with `lein daemon start :name-of-service`. This will call the -main function in the specified ns, with no arguments. Extra arguments may also be specified, like `lein daemon start :service foo bar baz`.
+Lein daemon currently has three commands, `start`, `stop`, `check`. Start with `lein daemon start name-of-service`. This will call the -main function in the specified ns, with no arguments. Extra arguments may also be specified, like `lein daemon start service foo bar baz`.
 
 Stop the process with `lein daemon stop name-of-service`. Daemon will use the pid file to identify which process to stop.
 
