@@ -110,15 +110,15 @@ In project.clj, add a field pair that looks like
  :daemon {:foo {:ns foo.bar
                 :pidfile \"foo.pid\"}}
 
-USAGE: lein daemon start :foo
-USAGE: lein daemon stop :foo
-USAGE: lein daemon check :foo
+USAGE: lein daemon start foo
+USAGE: lein daemon stop foo
+USAGE: lein daemon check foo
 
 this will apply the -main method in foo.bar.
 
 On the start call, any additional arguments will be passed to -main
 
-USAGE: lein daemon start :foo bar baz
+USAGE: lein daemon start foo bar baz
 "
   [project & [command daemon-name & args :as all-args]]
   (when (or (nil? command)
