@@ -61,7 +61,7 @@
   (let [timeout (* 5 60)
         arg-str (str/join " " args)
         alias (name alias)
-        log-file (format "%s.log" alias)
+        log-file (get-log-file-path project alias)
         lein (get-lein-script)
         nohup-cmd (format "nohup %s daemon-starter %s %s </dev/null &> %s &" lein alias arg-str log-file)]
     (println "pid not present, starting")

@@ -11,8 +11,14 @@
 (defn default-pid-name [daemon-name]
   (format "%s.pid" (name daemon-name)))
 
+(defn default-log-file-name [daemon-name]
+  (format "%s.log" (name daemon-name)))
+
 (defn get-pid-path [project daemon-name]
   (get-in project [:daemon daemon-name :pidfile] (default-pid-name daemon-name)))
+
+(defn get-log-file-path [project daemon-name]
+  (get-in project [:daemon daemon-name :logfile] (default-log-file-name daemon-name)))
 
 (defn get-daemon-name [project name]
   (cond
