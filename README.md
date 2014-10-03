@@ -1,3 +1,9 @@
+** DEPRECATED **
+
+I recommend using https://github.com/circleci/lein-jarbin instead.
+
+
+
 Lein-daemon is a lein plugin that starts a clojure process as a daemon.
 
 To use, add a :daemon option to your project.clj, it looks like
